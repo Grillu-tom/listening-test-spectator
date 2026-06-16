@@ -383,7 +383,17 @@ function checkSelection() {
 // =========================
 
 async function submitTest() {
+  const selectedRadio = document.querySelector(
+    'input[name="comparison"]:checked'
+  );
 
+  if (!selectedRadio) {
+    alert("Please select Audio A or Audio B.");
+    return;
+  }
+
+  const selected = selectedRadio.value;
+  
   const button =
     document.getElementById("submitButton");
 
@@ -414,10 +424,6 @@ async function submitTest() {
       "yearsPractice"
     ).value || "";
 
-  const selected =
-    document.querySelector(
-      'input[name="comparison"]:checked'
-    )?.value || "";
 
   const correctItem =
     comparisonFiles.find(
