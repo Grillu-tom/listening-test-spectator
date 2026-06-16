@@ -1,0 +1,542 @@
+<div id="introPage">
+
+  <h1>Comparison between synthesized guitar sounds</h1>
+
+  <p>Thank you for participating in this listening experiment.</p>
+  <p>The test is supposed to last 15 minutes. The test is anonymous and the data will not be saved if you stop during the test. </p>
+  <p>
+    You will need to perceive the subtle differences between guitar sounds : make sure you are in a quiet environment.
+  </p>
+
+  <hr>
+
+  <h3>Participant information</h3>
+
+  <label>Pseudo:</label><br>
+  <input
+  type="text"
+  id="participant"
+  placeholder="user001"
+  oninput="validateIntro()">
+
+  <br><br>
+
+  <label>Age:</label><br>
+  <input
+  type="number"
+  id="age"
+  min="0"
+  max="120"
+  oninput="validateIntro()">
+
+  <br><br>
+
+  <label>Listening device:</label><br>
+
+  <label>
+    <input type="radio" name="device" value="Headphones">
+    Headphones
+  </label>
+
+  <label>
+    <input type="radio" name="device" value="Speakers">
+    Speakers
+  </label>
+
+  <br><br>
+
+  <label>Do you play a musical instrument?</label><br>
+
+  <label>
+    <input type="radio" name="musician" value="Yes" onchange="toggleInstrument(true)">
+    Yes
+  </label>
+
+  <label>
+    <input type="radio" name="musician" value="No" onchange="toggleInstrument(false)">
+    No
+  </label>
+
+  <br><br>
+
+  <div id="instrumentDetails" style="display:none;">
+
+  <label>Which instrument?</label><br>
+  <input
+  type="text"
+  id="instrument"
+  placeholder="e.g. guitar, piano, violin"
+  oninput="validateIntro()">
+
+  <br><br>
+
+  <label>How many years?</label><br>
+  <input
+  type="number"
+  id="yearsPractice"
+  min="0"
+  max="100"
+  oninput="validateIntro()">
+
+</div>
+
+<br>
+
+<button id="startBtn" onclick="startTest()" disabled>
+  Start Test
+</button>
+
+</div>
+<!-- ================= TEST PAGE ================= -->
+
+<div id="testPage" style="display:none;">
+  
+<div id="trialCounter" style="font-weight:bold; margin-bottom:15px;">
+</div>
+  
+<hr>
+
+<h2>Listen to the reference first, then determine whether
+Audio A or Audio B matches the reference.</h2>
+
+<p>You can only listen to the excerpts twice.</p>
+
+<audio id="referenceAudio">
+  <source src="reference.wav" type="audio/wav">
+</audio>
+
+<button onclick="playOnce('referenceAudio', this)">
+  ▶ Reference
+</button>
+
+<hr>
+
+<div id="comparisonContainer"></div>
+
+<hr>
+
+<button id="submitButton" onclick="submitTest()" disabled>
+  Submit
+</button>
+
+</div>
+
+<script>
+
+// =========================
+// NAVIGATION
+// =========================
+
+async function startTest() {
+
+  document.getElementById("introPage").style.display = "none";
+  document.getElementById("testPage").style.display = "block";
+
+  await loadTrials();
+}
+
+function buildTrial() {
+  document.getElementById("trialCounter").innerText =
+  `Trial ${currentTrial + 1}/${trials.length}`;
+  
+  const intruder = trials[currentTrial];
+
+  const matchIsA = Math.random() < 0.5;
+
+  comparisonFiles = [
+
+    {
+      visibleLabel: "A",
+      hiddenIdentity: matchIsA ? "MATCH" : "DIFFERENT",
+      file: matchIsA ? "reference.wav" : intruder,
+      isCorrect: matchIsA
+    },
+
+    {
+      visibleLabel: "B",
+      hiddenIdentity: matchIsA ? "DIFFERENT" : "MATCH",
+      file: matchIsA ? intruder : "reference.wav",
+      isCorrect: !matchIsA
+    }
+
+  ];
+
+  const container =
+    document.getElementById("comparisonContainer");
+
+  container.innerHTML = "";
+
+  comparisonFiles.forEach((item, index) => {
+
+    container.innerHTML += `
+
+      <audio id="audio_${index}">
+        <source src="${item.file}" type="audio/wav">
+      </audio>
+
+      <button onclick="playOnce('audio_${index}', this, '${item.visibleLabel}')">
+        ▶ Audio ${item.visibleLabel}
+      </button>
+
+      <br><br>
+
+      <label>
+        <input
+          type="radio"
+          name="comparison"
+          value="${item.visibleLabel}"
+          onchange="checkSelection()">
+        ${item.visibleLabel}
+      </label>
+
+      <br><br>
+
+    `;
+
+  });
+
+  document.getElementById("submitButton").disabled = true;
+
+  for (let key in playCounts) {
+    delete playCounts[key];
+  }
+
+  const refButton =
+    document.querySelector(
+      'button[onclick*="referenceAudio"]'
+    );
+
+  if (refButton) {
+    refButton.disabled = false;
+    refButton.innerText = "▶ Reference";
+  }
+
+}
+
+function toggleInstrument(show) {
+  document.getElementById("instrumentDetails").style.display =
+    show ? "block" : "none";
+
+  if (!show) {
+
+  document.getElementById("yearsPractice").value = "";
+
+  document.getElementById("instrument").value = "";
+}
+
+  validateIntro();
+}
+
+// =========================
+// VALIDATION INTRO
+// =========================
+
+function validateIntro() {
+  
+  const instrument =
+  document.getElementById("instrument")?.value.trim() || "";
+
+  const participant =
+    document.getElementById("participant")?.value.trim() || "";
+
+  const age =
+    document.getElementById("age")?.value || "";
+
+  const device =
+    document.querySelector('input[name="device"]:checked');
+
+  const musician =
+    document.querySelector('input[name="musician"]:checked');
+
+  const yearsPracticeEl =
+    document.getElementById("yearsPractice");
+
+  const years =
+    yearsPracticeEl ? yearsPracticeEl.value : "";
+
+  let valid = true;
+
+  if (participant === "") valid = false;
+  if (age === "") valid = false;
+  if (!device) valid = false;
+  if (!musician) valid = false;
+
+  if (musician && musician.value === "Yes") {
+
+  if (years === "") valid = false;
+
+  if (instrument === "") valid = false;
+}
+
+  document.getElementById("startBtn").disabled = !valid;
+}
+
+// =========================
+// AUDIO FILES
+// =========================
+
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+async function loadTrials() {
+
+  const response = await fetch("audio-list.json");
+
+  trials = shuffle(await response.json());
+
+  buildTrial();
+}  
+let trials = [];
+
+let currentTrial = 0;
+
+let allResults = [];
+
+let comparisonFiles = [];
+
+
+// =========================
+// LIMITATION ECOUTES
+// =========================
+
+const MAX_PLAYS = 2;
+const playCounts = {};
+
+function playOnce(audioId, buttonElement, label) {
+
+  if (!playCounts[audioId]) {
+    playCounts[audioId] = 0;
+  }
+
+  if (playCounts[audioId] >= MAX_PLAYS) {
+    return;
+  }
+
+  const audio = document.getElementById(audioId);
+
+  if (!audio.paused) {
+    return;
+  }
+
+  playCounts[audioId]++;
+
+  audio.currentTime = 0;
+  audio.play();
+
+  const remaining = MAX_PLAYS - playCounts[audioId];
+
+  if (remaining > 0) {
+
+    if (audioId === "referenceAudio") {
+
+      buttonElement.innerText =
+        `▶ Reference (${remaining} left)`;
+
+    } else {
+
+      buttonElement.innerText =
+        `▶ Audio ${label} (${remaining} left)`;
+
+    }
+
+  } else {
+
+    buttonElement.disabled = true;
+
+    if (audioId === "referenceAudio") {
+
+      buttonElement.innerText =
+        "Reference listened twice";
+
+    } else {
+
+      buttonElement.innerText =
+        `Audio ${label} listened twice`;
+
+    }
+  }
+}
+
+
+// =========================
+// ENABLE SUBMIT
+// =========================
+
+function checkSelection() {
+
+  const selected =
+    document.querySelector(
+      'input[name="comparison"]:checked'
+    );
+
+  document.getElementById(
+    "submitButton"
+  ).disabled = !selected;
+}
+
+// =========================
+// SUBMIT
+// =========================
+
+async function submitTest() {
+
+  const button =
+    document.getElementById("submitButton");
+
+  button.disabled = true;
+  button.innerText = "Sending...";
+
+  const instrument =
+  document.getElementById("instrument")?.value || "";
+  
+  const participant =
+    document.getElementById("participant").value;
+
+  const age =
+    document.getElementById("age").value;
+
+  const device =
+    document.querySelector(
+      'input[name="device"]:checked'
+    )?.value || "";
+
+  const musician =
+    document.querySelector(
+      'input[name="musician"]:checked'
+    )?.value || "";
+
+  const yearsPractice =
+    document.getElementById(
+      "yearsPractice"
+    ).value || "";
+
+  const selected =
+    document.querySelector(
+      'input[name="comparison"]:checked'
+    )?.value || "";
+
+  const correctItem =
+    comparisonFiles.find(
+      item => item.isCorrect
+    );
+
+  const isCorrect =
+    selected === correctItem.visibleLabel;
+
+  allResults.push({
+
+  trial: currentTrial + 1,
+
+  intruder: trials[currentTrial],
+
+  selected: selected,
+
+  correct: isCorrect,
+
+  mapping:
+    comparisonFiles
+      .map(item =>
+        `${item.visibleLabel}:${item.hiddenIdentity}`)
+      .join(",")
+
+});
+
+currentTrial++;
+
+if (currentTrial < trials.length) {
+
+  document.querySelector(
+    'input[name="comparison"]:checked'
+  ).checked = false;
+
+  buildTrial();
+
+  button.disabled = false;
+  button.innerText = "Submit";
+
+  return;
+}
+const responses = {};
+
+  allResults.forEach((result, index) => {
+
+  const trialNum = index + 1;
+
+  responses[`TRIAL${trialNum}_SELECTED`] = {
+    answer: result.selected,
+    chiave: `trial${trialNum}`
+  };
+
+  responses[`TRIAL${trialNum}_CORRECT`] = {
+    answer: result.correct,
+    chiave: `trial${trialNum}`
+  };
+
+  responses[`TRIAL${trialNum}_INTRUDER`] = {
+    answer: result.intruder,
+    chiave: `trial${trialNum}`
+  };
+
+});
+
+responses.AGE = {
+  answer: age,
+  chiave: "demographics"
+};
+
+responses.DEVICE = {
+  answer: device,
+  chiave: "demographics"
+};
+
+responses.MUSICIAN = {
+  answer: musician,
+  chiave: "demographics"
+};
+
+responses.INSTRUMENT = {
+  answer: instrument,
+  chiave: "demographics"
+};
+
+responses.YEARS_PRACTICE = {
+  answer: yearsPractice,
+  chiave: "demographics"
+};
+
+  console.log(responses);
+
+  try {
+
+    await fetch(
+      "https://script.google.com/macros/s/AKfycbxZcnmbUs3bwtbBTu-e2Fw8ONPd6cBFNj5tUmCtEh7Og9pAZWzBxbYjG34Gmn_AsJpi/exec",
+      {
+        method: "POST",
+        mode: "no-cors",
+        body: new URLSearchParams({
+          participant: participant,
+          responses: JSON.stringify(responses)
+        })
+      }
+    );
+
+    button.innerText = "Submitted ✓";
+
+    alert("Responses sent!");
+
+  } catch (error) {
+
+    console.error(error);
+
+    button.disabled = false;
+    button.innerText = "Submit";
+
+    alert("FETCH ERROR");
+  }
+}
+
+</script>
